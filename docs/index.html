@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π(x) — Prime Counting Function</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0b0f19;
+    --surface: #131a2b;
+    --surface2: #1b2540;
+    --border: #243049;
+    --text: #d8dee9;
+    --text-dim: #6b7a94;
+    --pi: #5eead4;
+    --result: #a5f3fc;
+    --gold: #f0c674;
+    --red: #f87171;
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Source Serif 4', Georgia, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    min-height: 100vh;
+}
+
+/* Subtle radial glow behind the page */
+body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(94, 234, 212, 0.04), transparent 70%);
+    pointer-events: none;
+}
+
+.page {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 80px 28px 60px;
+}
+
+/* ── Header ── */
+header { text-align: center; margin-bottom: 56px; }
+
+.title {
+    font-family: var(--mono);
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1.1;
+}
+
+.title .fn { color: var(--pi); }
+.title .p  { color: var(--text-dim); font-weight: 400; }
+
+.tagline {
+    margin-top: 14px;
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    line-height: 1.65;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ── Status ── */
+#status {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    transition: border-color 0.3s;
+}
+
+#status.ready { border-color: var(--pi); color: var(--pi); }
+#status.error { border-color: var(--red); color: var(--red); }
+
+/* ── Input ── */
+.input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 28px 24px;
+    margin-bottom: 20px;
+}
+
+.input-card label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.row { display: flex; gap: 10px; }
+
+#x-input {
+    flex: 1;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#x-input:focus { border-color: var(--pi); }
+#x-input::placeholder { color: #3a4a62; }
+
+#go-btn {
+    background: var(--pi);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+#go-btn:hover { opacity: 0.85; }
+#go-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* Quick picks */
+.picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.pick {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pick:hover {
+    border-color: var(--pi);
+    color: var(--pi);
+}
+
+/* ── Result ── */
+#result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+#result-card.show { display: block; }
+
+.result-label {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+.result-label .fn { color: var(--pi); }
+.result-label .xv { color: var(--gold); }
+
+.result-num {
+    font-family: var(--mono);
+    font-size: clamp(1.6rem, 5vw, 2.6rem);
+    font-weight: 700;
+    color: var(--result);
+    word-break: break-all;
+    letter-spacing: -0.5px;
+}
+
+.result-foot {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+}
+
+.result-foot span { color: var(--gold); }
+
+/* ── History ── */
+#history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 28px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+#history-card.show { display: block; }
+
+#history-card h3 {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.history-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(36, 48, 73, 0.5);
+}
+
+.history-row:last-child { border-bottom: none; }
+.history-row .hx { color: var(--text-dim); }
+.history-row .hv { color: var(--result); }
+
+/* ── About ── */
+.about {
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+    padding-top: 32px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    line-height: 1.75;
+}
+
+.about h3 {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--pi);
+    margin-bottom: 12px;
+}
+
+.about p { margin-bottom: 14px; }
+
+.about code {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    background: var(--bg);
+    padding: 1px 7px;
+    border-radius: 4px;
+    color: var(--text);
+}
+
+footer {
+    text-align: center;
+    margin-top: 48px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+
+footer a { color: var(--pi); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="page">
+    <header>
+        <div class="title"><span class="fn">π</span><span class="p">(</span>x<span class="p">)</span></div>
+        <p class="tagline">Count the primes up to any number below 2 × 10<sup>12</sup>. Precomputed table + WASM sieve. Instant results.</p>
+    </header>
+
+    <div id="status">Loading WASM module and table data...</div>
+
+    <div class="input-card">
+        <label>Enter x</label>
+        <div class="row">
+            <input type="text" id="x-input" placeholder="e.g. 1000000000000" disabled autocomplete="off" inputmode="numeric">
+            <button id="go-btn" disabled>Count</button>
+        </div>
+        <div class="picks">
+            <button class="pick" data-v="1000000">10⁶</button>
+            <button class="pick" data-v="1000000000">10⁹</button>
+            <button class="pick" data-v="100000000000">10¹¹</button>
+            <button class="pick" data-v="1000000000000">10¹²</button>
+            <button class="pick" data-v="999999999989">Largest prime ≤10¹²</button>
+            <button class="pick" data-v="2000000000000">2×10¹²</button>
+        </div>
+    </div>
+
+    <div id="result-card">
+        <div class="result-label"><span class="fn">π</span>(<span class="xv" id="r-x"></span>) =</div>
+        <div class="result-num" id="r-val"></div>
+        <div class="result-foot">Query time: <span id="r-time"></span></div>
+    </div>
+
+    <div id="history-card">
+        <h3>History</h3>
+        <div id="history-list"></div>
+    </div>
+
+    <div class="about">
+        <h3>How it works</h3>
+        <p>A precomputed prefix-sum table stores <code>π(x)</code> at every 30,000,000-number interval up to 2 × 10<sup>12</sup>. The table (≈ 521 KB) is loaded into your browser. For any query, the nearest checkpoint is looked up in O(1), then a wheel-30 segmented sieve (compiled to WebAssembly for near-native speed) counts the remaining primes in the short gap.</p>
+
+        <h3>Build your own table</h3>
+        <p>The C++ source can build tables to any range on your hardware. Clone the repo, compile, and extend the table incrementally — each run only sieves the new range.</p>
+    </div>
+
+    <footer>
+        Built by <a href="https://github.com/p-santhiagu">P. Santhiagu</a> · 
+        <a href="https://github.com/p-santhiagu/prime-pi">Source on GitHub</a>
+    </footer>
+</div>
+
+<script>
+// ============================================================================
+// Load WASM module and table, then wire up the UI
+// ============================================================================
+
+let wasmReady = false;
+let queryPi = null;
+let history = [];
+
+const statusEl  = document.getElementById('status');
+const inputEl   = document.getElementById('x-input');
+const goBtn     = document.getElementById('go-btn');
+const resultEl  = document.getElementById('result-card');
+const historyEl = document.getElementById('history-card');
+
+function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = cls || '';
+}
+
+function formatNum(n) {
+    return n.toLocaleString('en-US');
+}
+
+function parseInput(s) {
+    // Remove commas, spaces, underscores
+    s = s.replace(/[,\s_]/g, '');
+
+    // Handle scientific notation: 10^12, 1e12, 10**12
+    let m;
+    if ((m = s.match(/^(\d+(?:\.\d+)?)\s*[*×x]\s*10\s*\^?\s*(\d+)$/i))) {
+        return Math.floor(parseFloat(m[1]) * Math.pow(10, parseInt(m[2])));
+    }
+    if ((m = s.match(/^10\s*\^+\s*(\d+)$/))) {
+        return Math.pow(10, parseInt(m[1]));
+    }
+    if ((m = s.match(/^(\d+(?:\.\d+)?)[eE](\d+)$/))) {
+        return Math.floor(parseFloat(m[1]) * Math.pow(10, parseInt(m[2])));
+    }
+    
+    const n = parseInt(s, 10);
+    if (isNaN(n) || n < 0) return null;
+    return n;
+}
+
+function addHistory(x, result, timeMs) {
+    history.unshift({ x, result, timeMs });
+    if (history.length > 10) history.pop();
+    renderHistory();
+}
+
+function renderHistory() {
+    if (history.length === 0) {
+        historyEl.classList.remove('show');
+        return;
+    }
+    historyEl.classList.add('show');
+    const list = document.getElementById('history-list');
+    list.innerHTML = history.map(h =>
+        `<div class="history-row">
+            <span class="hx">π(${formatNum(h.x)})</span>
+            <span class="hv">${formatNum(h.result)}</span>
+        </div>`
+    ).join('');
+}
+
+function doQuery() {
+    const raw = inputEl.value.trim();
+    if (!raw) return;
+
+    const x = parseInput(raw);
+    if (x === null || x < 0) {
+        setStatus('Invalid input — enter a positive integer', 'error');
+        return;
+    }
+
+    if (!wasmReady || !queryPi) {
+        setStatus('WASM not ready', 'error');
+        return;
+    }
+
+    const t0 = performance.now();
+    const result = queryPi(x);
+    const t1 = performance.now();
+
+    if (result < 0) {
+        setStatus(`x = ${formatNum(x)} exceeds table range`, 'error');
+        return;
+    }
+
+    const timeMs = (t1 - t0);
+    const timeStr = timeMs < 1 ? `${(timeMs * 1000).toFixed(0)} µs` : `${timeMs.toFixed(1)} ms`;
+
+    document.getElementById('r-x').textContent = formatNum(x);
+    document.getElementById('r-val').textContent = formatNum(result);
+    document.getElementById('r-time').textContent = timeStr;
+    resultEl.classList.add('show');
+
+    setStatus(`Ready — table covers [0, ${formatNum(2000009999999)}]`, 'ready');
+    addHistory(x, result, timeMs);
+}
+
+// Event listeners
+goBtn.addEventListener('click', doQuery);
+inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doQuery(); });
+
+document.querySelectorAll('.pick').forEach(btn => {
+    btn.addEventListener('click', () => {
+        inputEl.value = btn.dataset.v;
+        doQuery();
+    });
+});
+
+// ============================================================================
+// Initialization: load WASM + table in parallel, then init
+// ============================================================================
+
+async function init() {
+    try {
+        setStatus('Loading WASM module and π table...');
+
+        // Load both in parallel
+        const [module, tableResponse] = await Promise.all([
+            PiModule(),
+            fetch('pi.dat')
+        ]);
+
+        if (!tableResponse.ok) throw new Error('Failed to fetch pi.dat');
+
+        setStatus('Processing table data...');
+        const tableBuffer = await tableResponse.arrayBuffer();
+        const tableBytes = new Uint8Array(tableBuffer);
+
+        // Allocate memory in WASM and copy table data
+        const ptr = module._malloc(tableBytes.length);
+        module.HEAPU8.set(tableBytes, ptr);
+
+        // Initialize table
+        const ok = module._init_table(ptr, tableBytes.length);
+        module._free(ptr);
+
+        if (!ok) throw new Error('Table initialization failed');
+
+        // Wrap query function
+        queryPi = module._query_pi;
+
+        const tableEnd = module._get_table_end();
+        const numCp = module._get_num_checkpoints();
+        const cpInterval = module._get_checkpoint_interval();
+
+        wasmReady = true;
+        inputEl.disabled = false;
+        goBtn.disabled = false;
+        inputEl.focus();
+
+        setStatus(`Ready — table covers [0, ${formatNum(tableEnd)}] · ${formatNum(numCp)} checkpoints`, 'ready');
+
+    } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`, 'error');
+    }
+}
+
+// init() is called after pi_query.js loads (see below)
+</script>
+
+<!-- WASM glue — must load BEFORE init() is called -->
+<script src="pi_query.js"></script>
+<script>
+    // PiModule is now defined — safe to initialize
+    if (typeof PiModule !== 'undefined') {
+        init();
+    } else {
+        setStatus('Error: WASM module failed to load. Check that pi_query.js and pi_query.wasm are in the same directory.', 'error');
+    }
+</script>
+
+</body>
+</html>

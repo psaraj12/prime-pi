@@ -1,0 +1,25 @@
+# Compiled binaries
+prime_pi
+prime_pi_fine
+*.o
+
+# WASM build artifacts (keep the committed ones in docs/)
+*.wasm
+pi_query.js
+!docs/pi_query.js
+!docs/pi_query.wasm
+
+# Table files (keep the one in docs/)
+*.dat
+!docs/pi.dat
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
