@@ -3,7 +3,7 @@
 // WASM module for π(x) queries against a precomputed prefix-sum table.
 //
 // Compile with Emscripten:
-//   emcc -O3 -s WASM=1 -s EXPORTED_FUNCTIONS='["_init_table","_query_pi","_get_table_end","_malloc","_free"]' \
+//   emcc -O3 -s WASM=1 -s EXPORTED_FUNCTIONS='["_init_table","_query_pi","_get_table_end","_get_checkpoint_interval","_get_num_checkpoints","_clear_query_cache","_get_cache_hits","_get_cache_misses","_malloc","_free"]' \
 //        -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue"]' \
 //        -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=16777216 \
 //        -o pi_query.js pi_query_wasm.cpp
@@ -138,6 +138,34 @@ struct W30Sieve {
             count += __builtin_popcountll(bits[w]);
         return count;
     }
+
+    u64 count_primes_to(u64 limit_inclusive) const {
+        if (!bits || limit_inclusive < lo) return 0;
+        if (limit_inclusive >= hi - 1) return count_primes();
+
+        u64 rel = limit_inclusive - base;
+        u64 groups_before = rel / 30;
+        int rem = (int)(rel % 30);
+
+        u64 bit_count = groups_before * 8;
+        for (int i = 0; i < 8; i++) {
+            if (W30_RES[i] <= rem) bit_count++;
+            else break;
+        }
+
+        u64 full_words = bit_count / 64;
+        int tail_bits = (int)(bit_count % 64);
+        u64 count = 0;
+
+        for (u64 w = 0; w < full_words; w++)
+            count += __builtin_popcountll(bits[w]);
+
+        if (tail_bits != 0) {
+            u64 mask = (1ULL << tail_bits) - 1;
+            count += __builtin_popcountll(bits[full_words] & mask);
+        }
+        return count;
+    }
 };
 
 static void sieve_segment_w30(W30Sieve& seg) {
@@ -171,6 +199,21 @@ static u64 g_checkpoint_interval = 0;
 static u64 g_num_checkpoints = 0;
 static u64* g_checkpoints = nullptr;
 
+// Last-query cache: reuses the previous sieved partial checkpoint interval.
+// This helps mobile when users issue nearby/repeated queries while typing.
+static W30Sieve g_cached_seg;
+static bool g_cache_valid = false;
+static u64 g_cache_ci = 0;
+static u64 g_cache_hi = 0;
+static u64 g_cache_hits = 0;
+static u64 g_cache_misses = 0;
+
+static void clear_cache_internal() {
+    g_cache_valid = false;
+    g_cache_ci = 0;
+    g_cache_hi = 0;
+}
+
 // ============================================================================
 // Exported functions (called from JavaScript)
 // ============================================================================
@@ -200,6 +243,10 @@ int init_table(const uint8_t* data, int data_len) {
     g_checkpoints = (u64*)malloc(g_num_checkpoints * sizeof(u64));
     if (!g_checkpoints) return 0;
     memcpy(g_checkpoints, data + 64, g_num_checkpoints * 8);
+
+    clear_cache_internal();
+    g_cache_hits = 0;
+    g_cache_misses = 0;
 
     // Build base primes for sieving partial blocks
     u64 sqrt_end = (u64)sqrt((double)g_table_end) + 1;
@@ -237,12 +284,22 @@ double query_pi(double x_dbl) {
         if (x >= 5) small_prime_count++;
     }
 
-    // Sieve partial block
+    // Sieve partial block, with conservative last-query cache.
     u64 interval_start = ci * g_checkpoint_interval;
-    W30Sieve seg;
-    seg.init(interval_start, x);
-    sieve_segment_w30(seg);
-    u64 seg_count = seg.count_primes();
+    u64 seg_count = 0;
+
+    if (g_cache_valid && g_cache_ci == ci && x <= g_cache_hi) {
+        ++g_cache_hits;
+        seg_count = g_cached_seg.count_primes_to(x);
+    } else {
+        ++g_cache_misses;
+        g_cached_seg.init(interval_start, x);
+        sieve_segment_w30(g_cached_seg);
+        g_cache_valid = true;
+        g_cache_ci = ci;
+        g_cache_hi = x;
+        seg_count = g_cached_seg.count_primes();
+    }
 
     return (double)(base_count + small_prime_count + seg_count);
 }
@@ -260,6 +317,18 @@ double get_checkpoint_interval() {
 // Get number of checkpoints
 double get_num_checkpoints() {
     return (double)g_num_checkpoints;
+}
+
+void clear_query_cache() {
+    clear_cache_internal();
+}
+
+double get_cache_hits() {
+    return (double)g_cache_hits;
+}
+
+double get_cache_misses() {
+    return (double)g_cache_misses;
 }
 
 }  // extern "C"

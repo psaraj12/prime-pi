@@ -191,7 +191,7 @@ static void sieve_segment_w30(W30Sieve& seg) {
 // For block 0, this includes primes 2, 3, 5.
 // ============================================================================
 
-static constexpr u64 CHECKPOINT_GROUPS = 1000000;     // 10000 groups of 30
+static constexpr u64 CHECKPOINT_GROUPS = 100000;     // 1000000 groups of 30
 static constexpr u64 CHECKPOINT_INTERVAL = CHECKPOINT_GROUPS * 30;  // = 300000 numbers
 static constexpr u64 BLOCK_MULTIPLIER = 1;      // tune this
 // Sieve block size for cache efficiency (separate from checkpoint interval)
