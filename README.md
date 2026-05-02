@@ -22,7 +22,7 @@ The browser version loads the 521 KB table and runs the sieve in **WebAssembly**
 
 ### Use the Web Version
 
-Visit **[https://p-santhiagu.github.io/prime-pi/](https://p-santhiagu.github.io/prime-pi/)** — no installation needed.
+Visit **[https://psaraj12.github.io/prime-pi/](https://psaraj12.github.io/prime-pi/)** — no installation needed.
 
 ### Build from Source (C++ CLI)
 
